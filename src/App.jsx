@@ -284,7 +284,7 @@ const GlobalStyles = () => (
 
     .upload-box-ui {
       width: 100%;
-      height: 80px;
+      height: 100px;
       border: 2px dashed #D1D5DB;
       border-radius: 8px;
       background: #F9FAFB;
@@ -297,10 +297,10 @@ const GlobalStyles = () => (
       font-size: 11px;
     }
     .upload-box-ui.disabled { cursor: default; opacity: 0.6; }
-    .preview-img-ui { width: 100%; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+    .preview-img-ui { width: 100%; height: 100px; object-fit: contain; border-radius: 8px; cursor: pointer; background: #F3F4F6; }
     .preview-img-ui.viewer { cursor: default; }
     @media (min-width: 768px) {
-      .upload-box-ui, .preview-img-ui { width: 80px; }
+      .upload-box-ui, .preview-img-ui { width: 100px; }
     }
     
     .footer-padding { padding-bottom: 40px; }
@@ -478,7 +478,6 @@ const KitRecordCard = ({ kit, image, onUpload, onSave, role }) => {
 export default function App() {
   const [view, setView] = useState('main'); // 'main', 'bacterial', 'nonbacterial'
   const [role, setRole] = useState('viewer'); // 'viewer', 'uploader'
-  
   const [kitImages, setKitImages] = useState({
     'KIT-BD-001': bacterial1,
     'KIT-BD-002': bacterial2,
