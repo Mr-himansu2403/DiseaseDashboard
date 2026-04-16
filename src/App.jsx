@@ -3,6 +3,13 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
+import { storeDiseaseData } from './firebase';
+
+// Import Assets
+import bacterial1 from './assets/Bacterial1.jpeg';
+import bacterial2 from './assets/Bacterial2.jpeg';
+import nonBacterial1 from './assets/Non-Bacterial1.jpeg';
+import nonBacterial2 from './assets/Non-Bacterial2.jpeg';
 
 // --- MOCK DATA ---
 const STATS_DATA = [
@@ -96,6 +103,14 @@ const GlobalStyles = () => (
       width: 100%;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     .header-title {
       color: white;
       font-weight: bold;
@@ -112,6 +127,25 @@ const GlobalStyles = () => (
       font-size: 12px;
       margin-top: 4px;
     }
+
+    .role-switcher {
+      display: flex;
+      background: rgba(255,255,255,0.2);
+      padding: 4px;
+      border-radius: 8px;
+      gap: 4px;
+    }
+    .role-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .role-btn.active { background: white; color: #7C3AED; }
+    .role-btn:not(.active) { background: transparent; color: white; }
 
     .grid-stats {
       display: grid;
@@ -256,7 +290,9 @@ const GlobalStyles = () => (
       color: #9CA3AF;
       font-size: 11px;
     }
+    .upload-box-ui.disabled { cursor: default; opacity: 0.6; }
     .preview-img-ui { width: 100%; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+    .preview-img-ui.viewer { cursor: default; }
     @media (min-width: 768px) {
       .upload-box-ui, .preview-img-ui { width: 80px; }
     }
@@ -267,12 +303,18 @@ const GlobalStyles = () => (
 
 // --- COMPONENTS ---
 
-const Header = () => (
+const Header = ({ role, setRole }) => (
   <header className="header">
-    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-      <div className="header-title">DIACUE TEST REPORT</div>
-      <div className="header-subtitle">Diarrhea Diagnostic Surveillance Dashboard</div>
-      <div className="header-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+    <div className="header-content">
+      <div>
+        <div className="header-title">DIACUE TEST REPORT</div>
+        <div className="header-subtitle">Diarrhea Diagnostic Surveillance Dashboard</div>
+        <div className="header-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      </div>
+      <div className="role-switcher">
+        <button className={`role-btn ${role === 'viewer' ? 'active' : ''}`} onClick={() => setRole('viewer')}>Viewer</button>
+        <button className={`role-btn ${role === 'uploader' ? 'active' : ''}`} onClick={() => setRole('uploader')}>Uploader</button>
+      </div>
     </div>
   </header>
 );
@@ -336,11 +378,14 @@ const VillageProgressCard = ({ name, positive }) => {
   );
 };
 
-const KitRecordCard = ({ kit, image, onUpload }) => {
+const KitRecordCard = ({ kit, image, onUpload, onSave, role }) => {
   const isPositive = kit.result === 'Positive';
+  const isViewer = role === 'viewer';
+  const [isSaving, setIsSaving] = React.useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
+    if (isViewer) return;
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -351,6 +396,24 @@ const KitRecordCard = ({ kit, image, onUpload }) => {
     }
   };
 
+  const handleUploadClick = () => {
+    if (!isViewer) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleSaveClick = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(kit);
+      alert(`Kit ${kit.id} saved to database!`);
+    } catch (err) {
+      alert("Error saving kit. Check console for details.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="kit-card-row">
       <div className="kit-info-block">
@@ -358,19 +421,42 @@ const KitRecordCard = ({ kit, image, onUpload }) => {
         <div className="patient-name-text">{kit.name}</div>
         <div className="kit-detail-text">Village: {kit.village}</div>
         <div className="kit-detail-text">Date: {kit.date}</div>
-        <div className="result-badge" style={{ backgroundColor: isPositive ? '#FEE2E2' : '#D1FAE5', color: isPositive ? '#DC2626' : '#059669' }}>
-          {kit.result.toUpperCase()} {isPositive ? '🔴' : '🟢'}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+          <div className="result-badge" style={{ backgroundColor: isPositive ? '#FEE2E2' : '#D1FAE5', color: isPositive ? '#DC2626' : '#059669', marginTop: 0 }}>
+            {kit.result.toUpperCase()} {isPositive ? '🔴' : '🟢'}
+          </div>
+          <button 
+            onClick={handleSaveClick}
+            disabled={isSaving}
+            style={{ 
+              padding: '4px 12px', 
+              fontSize: '12px', 
+              borderRadius: '20px', 
+              border: '1px solid #7C3AED', 
+              background: isSaving ? '#F3F4F6' : 'white', 
+              color: '#7C3AED', 
+              cursor: isSaving ? 'default' : 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            {isSaving ? 'Saving...' : '☁️ Save'}
+          </button>
         </div>
       </div>
       
       <div className="upload-box-wrapper">
-        <input type="file" accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} />
+        <input type="file" accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} disabled={isViewer} />
         {image ? (
-          <img src={image} alt="Kit" className="preview-img-ui" onClick={() => fileInputRef.current.click()} />
+          <img 
+            src={image} 
+            alt="Kit" 
+            className={`preview-img-ui ${isViewer ? 'viewer' : ''}`} 
+            onClick={handleUploadClick} 
+          />
         ) : (
-          <div className="upload-box-ui" onClick={() => fileInputRef.current.click()}>
+          <div className={`upload-box-ui ${isViewer ? 'disabled' : ''}`} onClick={handleUploadClick}>
             <div style={{ fontSize: '18px' }}>📷</div>
-            <div>Upload</div>
+            <div>{isViewer ? 'No Image' : 'Upload'}</div>
           </div>
         )}
       </div>
@@ -382,11 +468,31 @@ const KitRecordCard = ({ kit, image, onUpload }) => {
 
 export default function App() {
   const [view, setView] = useState('main'); // 'main', 'bacterial', 'nonbacterial'
-  const [kitImages, setKitImages] = useState({});
-  const [nbKitImages, setNbKitImages] = useState({});
+  const [role, setRole] = useState('viewer'); // 'viewer', 'uploader'
+  
+  const [kitImages, setKitImages] = useState({
+    'KIT-BD-001': bacterial1,
+    'KIT-BD-002': bacterial2,
+  });
+  const [nbKitImages, setNbKitImages] = useState({
+    'KIT-NB-001': nonBacterial1,
+    'KIT-NB-002': nonBacterial2,
+  });
 
   const handleBacterialUpload = (id, data) => setKitImages(prev => ({ ...prev, [id]: data }));
   const handleNonBacterialUpload = (id, data) => setNbKitImages(prev => ({ ...prev, [id]: data }));
+
+  const handleSaveToFirebase = async (kit) => {
+    // Determine type based on ID prefix
+    const type = kit.id.includes('-BD-') ? 'Bacterial' : 'Non-Bacterial';
+    await storeDiseaseData({
+      ...kit,
+      type,
+      // We don't save the full base64 image to Firestore due to size limits, 
+      // but we record that it has an image if available
+      hasImage: !!(kitImages[kit.id] || nbKitImages[kit.id])
+    });
+  };
 
   const renderDashboard = () => (
     <div className="container">
@@ -454,7 +560,14 @@ export default function App() {
         <p style={{ color: '#6B7280', fontSize: '14px' }}>Showing all bacterial diarrhea diagnostic kits</p>
       </div>
       {BACTERIAL_KITS_DATA.map(kit => (
-        <KitRecordCard key={kit.id} kit={kit} image={kitImages[kit.id]} onUpload={handleBacterialUpload} />
+        <KitRecordCard 
+          key={kit.id} 
+          kit={kit} 
+          image={kitImages[kit.id]} 
+          onUpload={handleBacterialUpload} 
+          onSave={handleSaveToFirebase}
+          role={role} 
+        />
       ))}
       <div className="footer-padding" />
     </div>
@@ -468,7 +581,14 @@ export default function App() {
         <p style={{ color: '#6B7280', fontSize: '14px' }}>Showing all non-bacterial diarrhea diagnostic kits</p>
       </div>
       {NON_BACTERIAL_KITS_DATA.map(kit => (
-        <KitRecordCard key={kit.id} kit={kit} image={nbKitImages[kit.id]} onUpload={handleNonBacterialUpload} />
+        <KitRecordCard 
+          key={kit.id} 
+          kit={kit} 
+          image={nbKitImages[kit.id]} 
+          onUpload={handleNonBacterialUpload} 
+          onSave={handleSaveToFirebase}
+          role={role} 
+        />
       ))}
       <div className="footer-padding" />
     </div>
@@ -477,7 +597,7 @@ export default function App() {
   return (
     <>
       <GlobalStyles />
-      <Header />
+      <Header role={role} setRole={setRole} />
       {view === 'main' && renderDashboard()}
       {view === 'bacterial' && renderBacterialPage()}
       {view === 'nonbacterial' && renderNonBacterialPage()}
