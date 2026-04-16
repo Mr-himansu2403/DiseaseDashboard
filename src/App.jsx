@@ -6,6 +6,7 @@ import {
 import { storeDiseaseData } from './firebase';
 
 // Import Assets
+import babycueLogo from './assets/Logo_BabyCue.png';
 import bacterial1 from './assets/Bacterial1.jpeg';
 import bacterial2 from './assets/Bacterial2.jpeg';
 import nonBacterial1 from './assets/Non-Bacterial1.jpeg';
@@ -116,6 +117,11 @@ const GlobalStyles = () => (
       font-weight: bold;
       font-size: clamp(18px, 4vw, 26px);
       line-height: 1.2;
+    }
+    .header-logo {
+      height: 40px;
+      margin-right: 12px;
+      border-radius: 4px;
     }
     .header-subtitle {
       color: #EDE9FE;
@@ -306,10 +312,13 @@ const GlobalStyles = () => (
 const Header = ({ role, setRole }) => (
   <header className="header">
     <div className="header-content">
-      <div>
-        <div className="header-title">DIACUE TEST REPORT</div>
-        <div className="header-subtitle">Diarrhea Diagnostic Surveillance Dashboard</div>
-        <div className="header-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <img src={babycueLogo} alt="BabyCue Logo" className="header-logo" />
+        <div>
+          <div className="header-title">DIACUE TEST REPORT</div>
+          <div className="header-subtitle">Diarrhea Diagnostic Surveillance Dashboard</div>
+          <div className="header-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+        </div>
       </div>
       <div className="role-switcher">
         <button className={`role-btn ${role === 'viewer' ? 'active' : ''}`} onClick={() => setRole('viewer')}>Viewer</button>
